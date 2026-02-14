@@ -1,2 +1,2 @@
-# calcly
+# Calcly
 Simple Calculator on Flutter
