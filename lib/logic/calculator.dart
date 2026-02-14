@@ -8,7 +8,9 @@ class Calculator {
     '*': 2,
     '/': 2,
     '^': 3,
-    '~': 4, // Унарный минус
+    '√': 3,
+    '!': 4,
+    '~': 5, // Унарный минус
   };
 
   Calculator();
@@ -28,7 +30,7 @@ class Calculator {
     List<String> input = [];
     List<String> stack = [];
     List<String> output = [];
-    RegExp numberRegExp = RegExp(r'\d+(?:\.\d+)?|[+\-*\/^()]');
+    RegExp numberRegExp = RegExp(r'\d+(?:\.\d+)?|[+\-*\/^()√!]');
 
     input = numberRegExp.allMatches(infix).map((m) => m[0]!).toList();
 
@@ -76,16 +78,32 @@ class Calculator {
     
     return output;
   }
+  
+  int _factorial(int n) {
+    if (n == 0 || n == 1) return 1;
+    int result = 1;
+    for (int i = 2; i <= n; i++) {
+      result *= i;
+    }
+    return result;
+  }
 
   /// Выполняет операцию над двумя числами
-  double _execute(String operator, double a, double b) => switch (operator) {
-    '+' => a + b,
-    '-' => a - b,
-    '*' => a * b,
-    '/' => b == 0
+  double _execute(String operator, double first, [double? second]) => switch (operator) {
+    '+' => first + second!,
+    '-' => first - second!,
+    '*' => first * second!,
+    '/' => second == 0
         ? throw UnsupportedError('Деление на ноль')
-        : a / b,
-    '^' => pow(a, b).toDouble(),
+        : first / second!,
+    '^' => pow(first, second!).toDouble(),
+    '√' =>
+      first < 0 
+        ? throw UnsupportedError('Корень из отрицательного числа')
+        : sqrt(first),
+    '!' => first < 0 || first != first.floor()
+        ? throw UnsupportedError('Факториал определён только для неотрицательных целых чисел')
+        : _factorial(first.toInt()).toDouble(),
     _ => throw ArgumentError('Неизвестный оператор: $operator'),
   };
 
@@ -99,6 +117,10 @@ class Calculator {
       } else if (token == '~') {
         if (stack.isEmpty) throw FormatException('Некорректное выражение');
         stack.add(-stack.removeLast());
+      } else if (token == '!' || token == '√') {
+        if (stack.isEmpty) throw FormatException('Некорректное выражение');
+        double a = stack.removeLast();
+        stack.add(_execute(token, a));
       } else {
         if (stack.length < 2) throw FormatException('Некорректное выражение');
         double b = stack.removeLast();

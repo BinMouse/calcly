@@ -1,5 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:calcly/calculator.dart';
+import 'package:calcly/logic/calculator.dart';
 
 class CalculatorScreen extends StatefulWidget {
   const CalculatorScreen({super.key});
@@ -13,6 +13,7 @@ class _CalculatorScreenState extends State<CalculatorScreen>
 
   // Логика калькулятора
   final Calculator _calculator = Calculator();
+  double? _memory;
   String _expression = '';
   String _display = '0';
   String _result = '';
@@ -60,27 +61,78 @@ class _CalculatorScreenState extends State<CalculatorScreen>
 
   // Обработка нажатий на кнопки
   void _onInput(String value) {
-    // HapticFeedback.lightImpact();
     setState(() {
       _hasError = false;
 
-      if (value == 'C') {
-        _clearAll();
-        return;
-      }
+      switch (value) {
+        case 'C':
+          _clearAll();
+          return;
 
-      if (value == '⌫') {
-        _clearLast();
-        return;
-      }
+        case '⌫':
+          _clearLast();
+          return;
 
-      if (value == '=') {
-        _evaluate();
-        return;
+        case '=':
+          _evaluate();
+          return;
+
+        case 'MS':
+          _memoryStore();
+          return;
+
+        case 'MR':
+          _memoryRecall();
+          return;
+
+        case 'M+':
+          _memoryAdd();
+          return;
+
+        case 'MC':
+          _memoryClear();
+          return;
       }
       _appendInput(value);
-      return;
     });
+  }
+
+  // Сохранение в память
+  void _memoryStore() {
+    try {
+      final value = double.parse(_display);
+      _memory = value;
+    } catch (_) {}
+  }
+
+  // Вставка из памяти
+  void _memoryRecall() {
+    if (_memory == null) return;
+
+    final memString = _formatResult(_memory!);
+
+    if (_justEvaluated) {
+      _expression = memString;
+      _display = memString;
+      _justEvaluated = false;
+      return;
+    }
+
+    _expression += memString;
+    _display = _expression;
+  }
+
+  // Добавление к памяти текущего значения
+  void _memoryAdd() {
+    try {
+      final value = double.parse(_display);
+      _memory = (_memory ?? 0) + value;
+    } catch (_) {}
+  }
+
+  // Очистка памяти
+  void _memoryClear() {
+    _memory = null;
   }
 
   // Очистка всего выражения
@@ -114,7 +166,7 @@ class _CalculatorScreenState extends State<CalculatorScreen>
   void _appendInput(String value) {
     if (_justEvaluated) {
         // Если после = нажали оператор — продолжаем с результата
-        if (['+', '-', '*', '/', '^', '(', ')'].contains(value)) {
+        if (['+', '-', '*', '/', '^', '(', ')', '!', '√'].contains(value)) {
           _expression = _result.isNotEmpty ? _result : _display;
         } else {
           _expression = '';
@@ -126,7 +178,7 @@ class _CalculatorScreenState extends State<CalculatorScreen>
 
       // Запрещаем вторую точку в одном числе
       if (value == '.') {
-        final lastSegment = _expression.split(RegExp(r'[+\-*/^()]')).last;
+        final lastSegment = _expression.split(RegExp(r'[+\-*/^()√!]')).last;
         if (lastSegment.contains('.')) return;
       }
 
@@ -301,13 +353,15 @@ class _CalculatorScreenState extends State<CalculatorScreen>
   Widget _buildKeypad(bool isWide) {
     // Раскладка кнопок
     final rows = [
-      ['(', ')', '^', '⌫'],
+      ['MC', 'MR', 'MS', 'M+'],
+      ['!', '√', '^', 'C'],
       ['7', '8', '9', '/'],
       ['4', '5', '6', '*'],
       ['1', '2', '3', '-'],
-      ['C', '0', '.', '+'],
-      ['='],
+      ['⌫', '0', '.', '+'],
+      ['=', '(', ')'],
     ];
+
 
     return Container(
       decoration: const BoxDecoration(
@@ -366,11 +420,12 @@ class _CalculatorScreenState extends State<CalculatorScreen>
     if (label == '⌫') return _ButtonType.backspace;
     if (['+', '-', '*', '/', '^'].contains(label)) return _ButtonType.operator;
     if (['(', ')'].contains(label)) return _ButtonType.bracket;
+    if (['MS', 'MR', 'M+', 'MC'].contains(label)) return _ButtonType.memory;
     return _ButtonType.digit;
   }
 }
 
-enum _ButtonType { digit, operator, equals, clear, backspace, bracket }
+enum _ButtonType { digit, operator, equals, clear, backspace, bracket, memory }
 
 class _CalcButton extends StatefulWidget {
   final String label;
@@ -425,6 +480,8 @@ class _CalcButtonState extends State<_CalcButton>
         return const Color(0xFF1A1E2A);
       case _ButtonType.digit:
         return const Color(0xFF1C1C24);
+      case _ButtonType.memory:
+        return const Color(0xFF2A223A);
     }
   }
 
@@ -442,6 +499,8 @@ class _CalcButtonState extends State<_CalcButton>
         return const Color(0xFF9B7EF8);
       case _ButtonType.digit:
         return Colors.white;
+      case _ButtonType.memory:
+        return const Color(0xFFD0B3FF);
     }
   }
 
